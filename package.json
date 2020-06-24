@@ -3,7 +3,7 @@
 	"displayName": "Screencast Helper",
 	"description": "VScode Screencast helper!.",
 	"publisher": "pkishoez",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"repository": "https://www.github.com/pkishoez/vscode-screencast-helper",
 	"engines": {
 		"vscode": "^1.46.0"

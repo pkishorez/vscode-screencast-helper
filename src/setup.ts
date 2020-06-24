@@ -97,7 +97,7 @@ const buttonMap = {
 	}),
 	PAUSE: ui.createStatusBarItem({
 		command: commands.pause,
-		text: "$(pause)",
+		text: "$(debug-pause)",
 		priority: -11,
 		color: "yellow",
 	}),

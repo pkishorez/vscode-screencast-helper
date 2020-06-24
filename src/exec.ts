@@ -222,11 +222,19 @@ export const execute = async (extcontext: vscode.ExtensionContext) => {
 							await document(editor).applyChange(frame.change);
 						}
 					};
+
+					const disableType = vscode.commands.registerCommand(
+						"type",
+						() => {
+							// Ignore.
+						}
+					);
 					const tickDispose = (() => {
 						let cancelled = false;
 						(async () => {
 							while (true) {
 								if (cancelled) {
+									disableType.dispose();
 									return;
 								}
 								await tick();
@@ -235,14 +243,7 @@ export const execute = async (extcontext: vscode.ExtensionContext) => {
 						})();
 						return () => (cancelled = true);
 					})();
-					const disableType = vscode.commands.registerCommand(
-						"type",
-						() => {
-							// Ignore.
-						}
-					);
 					return () => {
-						disableType.dispose();
 						tickDispose();
 					};
 				},
@@ -314,15 +315,25 @@ export const execute = async (extcontext: vscode.ExtensionContext) => {
 						return;
 					}
 					let edits: vscode.TextDocumentContentChangeEvent[] = [];
+					let selections: vscode.Selection[];
 					const textchangeHandler = vscode.workspace.onDidChangeTextDocument(
 						(e) => {
-							edits = _.cloneDeep(e.contentChanges) as any;
+							if (edits.length) {
+								context.project?.addChange({
+									edits,
+									selections,
+								});
+							}
+							edits = _.cloneDeep(e.contentChanges as any);
+							selections = _.cloneDeep(
+								vscode.window.activeTextEditor.selections
+							);
 						}
 					);
 					const selectionHandler = vscode.window.onDidChangeTextEditorSelection(
 						(e) => {
 							context.project?.addChange({
-								edits: edits,
+								edits,
 								selections: _.cloneDeep(e.selections) as any,
 							});
 
