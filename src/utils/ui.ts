@@ -7,12 +7,14 @@ export const ui = {
 		align = "left",
 		priority = 0,
 		show = false,
+		color,
 	}: {
 		command?: string;
 		text: string;
 		align?: "left" | "right";
 		priority?: number;
 		show?: boolean;
+		color?: string;
 	}) => {
 		const status = vscode.window.createStatusBarItem(
 			align === "left"
@@ -22,6 +24,7 @@ export const ui = {
 		);
 		status.command = command;
 		status.text = text;
+		status.color = color;
 		show && status.show();
 		return status;
 	},

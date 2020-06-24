@@ -23,6 +23,19 @@ export interface IChange {
 	}
 	return destination;
 };
+export const documentUtils = {
+	rehydrate(change: IChange): IChange {
+		return {
+			edits: change.edits.map((v) => rehydrateChangeEvent(v as any)),
+			selections: change.selections.map((v) => rehydrateSelection(v)),
+		};
+	},
+	focus() {
+		vscode.commands.executeCommand(
+			"workbench.action.focusActiveEditorGroup"
+		);
+	},
+};
 export const document = (editor: vscode.TextEditor) => {
 	const obj = {
 		clear() {
@@ -35,23 +48,13 @@ export const document = (editor: vscode.TextEditor) => {
 				);
 			});
 		},
-		rehydrate(change: IChange): IChange {
-			return {
-				edits: change.edits.map((v) => rehydrateChangeEvent(v as any)),
-				selections: change.selections.map((v) => rehydrateSelection(v)),
-			};
-		},
-		setText(text: string) {
-			editor.edit((builder) => {
+		async setText(text: string) {
+			await editor.edit((builder) => {
 				obj.clear();
 				builder.insert(new vscode.Position(0, 0), text);
 			});
 		},
-		focus() {
-			vscode.commands.executeCommand(
-				"workbench.action.focusActiveEditorGroup"
-			);
-		},
+
 		async _applyEdits(edits: IChange["edits"]) {
 			edits.length &&
 				(await editor.edit((builder) => {
@@ -74,16 +77,15 @@ export const document = (editor: vscode.TextEditor) => {
 				);
 			editor.selections = selections;
 		},
-		async applyChange(change: IChange, focus = true) {
-			focus && obj.focus();
+		async applyChange(change: IChange) {
 			try {
 				await obj._applyEdits(change.edits);
 			} catch (err) {
-				console.log("ERROR :", err.message);
+				console.error("ERROR :", err.message);
 			}
 
 			try {
-				obj._applySelections(change.selections);
+				await obj._applySelections(change.selections);
 			} catch (err) {
 				console.error(
 					"ERROR: APPLYCHANGE",

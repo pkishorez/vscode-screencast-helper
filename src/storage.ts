@@ -1,11 +1,12 @@
 import vscode from "vscode";
-import { IChange } from "./utils/document";
+import { IChange, documentUtils } from "./utils/document";
 import { v4 } from "uuid";
 import _ from "lodash";
 
 interface IBreakPoint {
 	id: string;
 	name: string;
+	content: string;
 	changes: IChange[];
 }
 interface IProject {
@@ -15,6 +16,10 @@ interface IProject {
 export interface IProjectMap {
 	[id: string]: IProject;
 }
+
+type ThenArg<T> = T extends PromiseLike<infer U> ? U : T;
+export type IStorageType = ThenArg<ReturnType<typeof initStorage>>;
+
 export const initStorage = async (context: vscode.ExtensionContext) => {
 	const projectsKey = "projects";
 	// context.globalState.update(projectsKey, undefined);
@@ -57,8 +62,11 @@ export const initStorage = async (context: vscode.ExtensionContext) => {
 				};
 			});
 		},
-		async delProject(id: string) {
-			delete projectData[id];
+		async delProject(ids: string[]) {
+			ids.forEach((id) => {
+				delete cache[id];
+				delete projectData[id];
+			});
 			await saveProjectData();
 			onProjectDataChange();
 		},
@@ -84,6 +92,18 @@ export const initStorage = async (context: vscode.ExtensionContext) => {
 	};
 };
 
+export type IPlayFrame =
+	| {
+			type: "BREAKPOINT";
+			name: string;
+			id: string;
+			number: number;
+			content: string;
+	  }
+	| {
+			type: "CHANGE";
+			change: IChange;
+	  };
 export class Project {
 	data: IProject;
 	public projectid: string;
@@ -95,13 +115,29 @@ export class Project {
 	) {
 		this.projectid = projectid;
 		const data = projectData[projectid];
+
 		this.save = _.debounce(this.save, 500, { trailing: true });
 		if (data) {
 			this.data = data;
+			// REHYDRATE DATA.
+			this.data.breakpoints = this.data.breakpoints.map((breakpoint) => ({
+				...breakpoint,
+				changes: breakpoint.changes.map((change) =>
+					documentUtils.rehydrate(change)
+				),
+			}));
+			// REHYDRATE DATA DONE.
 		} else {
 			this.data = {
 				initialContent: "",
-				breakpoints: [{ id: v4(), name: "RECORD START", changes: [] }],
+				breakpoints: [
+					{
+						id: v4(),
+						name: "RECORD START",
+						changes: [],
+						content: "",
+					},
+				],
 			};
 			this.save();
 		}
@@ -110,26 +146,22 @@ export class Project {
 	getPlayData() {
 		return {
 			initialContent: this.data.initialContent,
+			nBreakpoints: this.data.breakpoints.length,
 			frames: _.flatMap(
-				this.data.breakpoints.map((v) => {
-					const changes = v.changes.map(
-						(v) =>
-							({
-								type: "CHANGE",
-								change: v,
-							} as {
-								type: "CHANGE";
-								change: IChange;
-							})
-					);
+				this.data.breakpoints.map((v, i) => {
 					return [
-						{ type: "BREAKPOINT", name: v.name, id: v.id } as {
-							type: "BREAKPOINT";
-							name: string;
-							id: string;
+						{
+							type: "BREAKPOINT",
+							number: i + 1,
+							name: v.name,
+							id: v.id,
+							content: v.content,
 						},
-						...changes,
-					];
+						...v.changes.map((v) => ({
+							type: "CHANGE",
+							change: v,
+						})),
+					] as IPlayFrame[];
 				})
 			),
 		};
@@ -138,6 +170,7 @@ export class Project {
 		this.data.breakpoints.push({
 			id: v4(),
 			name,
+			content: vscode.window.activeTextEditor.document.getText(),
 			changes: [],
 		});
 		this.save();
@@ -161,15 +194,13 @@ export class Project {
 	};
 	addChange = (change: IChange) => {
 		try {
-			console.log("CHANGE : ", change, this.data);
 			const lastBreakPoint = this.data.breakpoints[
 				this.data.breakpoints.length - 1
 			];
 			lastBreakPoint.changes.push(change);
-			console.log("PROJECT: ", this.data);
 			this.save();
 		} catch (e) {
-			console.log("ERROR: ", e);
+			console.error("ERROR: ", e);
 		}
 	};
 	save = () => {

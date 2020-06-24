@@ -1,9 +1,9 @@
 {
 	"name": "screencast-helper",
 	"displayName": "Screencast Helper",
-	"description": "For practice",
+	"description": "VScode Screencast helper!.",
 	"publisher": "pkishoez",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"repository": "https://www.github.com/pkishoez/vscode-screencast-helper",
 	"engines": {
 		"vscode": "^1.46.0"
@@ -16,13 +16,7 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": [
-			{
-				"command": "screencastHelper.createProject",
-				"title": "Add",
-				"icon": "$(plus)"
-			}
-		],
+		"commands": [],
 		"views": {
 			"explorer": [
 				{
