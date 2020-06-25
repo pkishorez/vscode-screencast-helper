@@ -192,12 +192,59 @@ export class Project {
 			breakpoints.splice(index, breakpoints.length - index);
 		}
 	};
-	addChange = (change: IChange) => {
+	addChange = (change: IChange, interpolate = true) => {
 		try {
 			const lastBreakPoint = this.data.breakpoints[
 				this.data.breakpoints.length - 1
 			];
-			lastBreakPoint.changes.push(change);
+			const { edits, selections } = change;
+			if (edits.length === 1 && selections.length === 1 && interpolate) {
+				const edit = edits[0];
+				const selection = selections[0];
+				if (
+					edit.text.length > 1 &&
+					edit.text.length < 50 &&
+					edit.range.isEmpty &&
+					selection.isEmpty &&
+					edit.range.isSingleLine &&
+					selection.isSingleLine &&
+					!edit.text.split("").find((v) => v === "\n")
+				) {
+					// Divide them!
+					for (let i = 0; i < edit.text.length; i++) {
+						const change: IChange = {
+							edits: [
+								{
+									range: new vscode.Range(
+										edit.range.start.translate(0, i),
+										edit.range.end.translate(0, i)
+									),
+									rangeLength: edit.rangeLength,
+									rangeOffset: edit.rangeOffset + i,
+									text: edit.text[i],
+								},
+							],
+							selections: [
+								new vscode.Selection(
+									selection.anchor.translate(
+										0,
+										-edit.text.length + 1 + i
+									),
+									selection.active.translate(
+										0,
+										-edit.text.length + 1 + i
+									)
+								),
+							],
+						};
+						lastBreakPoint.changes.push(change);
+					}
+				} else {
+					lastBreakPoint.changes.push(change);
+				}
+			} else {
+				lastBreakPoint.changes.push(change);
+			}
 			this.save();
 		} catch (e) {
 			console.error("ERROR: ", e);
