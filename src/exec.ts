@@ -238,7 +238,7 @@ export const execute = async (extcontext: vscode.ExtensionContext) => {
 									return;
 								}
 								await tick();
-								await sleep(80);
+								await sleep(30);
 							}
 						})();
 						return () => (cancelled = true);
